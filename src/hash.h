@@ -9,6 +9,7 @@
 // it does not play well with inline functions
 enum {
 	SHA_256_SIZE = 32,
+	SHA_512_SIZE = 64,
 };
 
 enum {
@@ -68,6 +69,63 @@ static __attribute__((always_inline, unused)) void sha_256_hash(const uint8_t* i
 	/* But we don't really care */
 	sha_256_append(&ctx, inBuffer, inSize);
 	sha_256_finalize(&ctx, outBuffer, outSize);
+}
+
+
+
+typedef struct {
+	uint16_t initialized_magic;
+	cx_sha512_t cx_ctx;
+} sha_512_context_t;
+
+static __attribute__((always_inline, unused)) void sha_512_init(sha_512_context_t* ctx)
+{
+	cx_sha512_init(&ctx->cx_ctx);
+	ctx->initialized_magic = HASH_CONTEXT_INITIALIZED_MAGIC;
+}
+
+static __attribute__((always_inline, unused)) void sha_512_append(sha_512_context_t* ctx,
+        const uint8_t* inBuffer, size_t inSize)
+{
+	ASSERT(ctx->initialized_magic == HASH_CONTEXT_INITIALIZED_MAGIC);
+	TRACE_BUFFER(inBuffer, inSize);
+	cx_hash(
+	        & ctx->cx_ctx.header,
+	        0, /* Do not output the hash, yet */
+	        inBuffer,
+	        inSize,
+	        NULL, 0
+	);
+}
+
+static __attribute__((always_inline, unused)) void sha_512_finalize(sha_512_context_t* ctx,
+        uint8_t* outBuffer, size_t outSize)
+{
+	\
+	ASSERT(ctx->initialized_magic == HASH_CONTEXT_INITIALIZED_MAGIC);
+	ASSERT(outSize == SHA_512_SIZE);
+	cx_hash(
+	        & ctx->cx_ctx.header,
+	        CX_LAST, /* Output the hash */
+	        NULL,
+	        0,
+	        outBuffer,
+	        SHA_512_SIZE
+	);
+}
+
+/* Convenience function to make all in one step */
+static __attribute__((always_inline, unused)) void sha_512_hash(const uint8_t* inBuffer, size_t inSize,
+        uint8_t* outBuffer, size_t outSize )
+{
+	ASSERT(inSize < BUFFER_SIZE_PARANOIA);
+	ASSERT(outSize == SHA_512_SIZE);
+	sha_512_context_t ctx;
+	sha_512_init(&ctx);
+	/* Note: This could be done by single cx_hash call */
+	/* But we don't really care */
+	sha_512_append(&ctx, inBuffer, inSize);
+	sha_512_finalize(&ctx, outBuffer, outSize);
 }
 
 
